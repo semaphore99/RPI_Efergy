@@ -1,7 +1,7 @@
 
 /*---------------------------------------------------------------------
 
-EFERGY E2 CLASSIC RTL-SDR DECODER via rtl_fm
+EFERGY RTL-SDR DECODER via rtl_fm
 
 Copyright 2013 Nathaniel Elijah
 
@@ -57,6 +57,7 @@ rtl_fm -f 433550000 -s 200000 -r 96000 -g 19.7 2>/dev/null | ./EfergyRPI_001
 // but play with the value for gain (in this case, 19.7) to achieve best result.
 // -------------------------------------------------------------------------------------------------
 //
+// 08-13-2014  -  Added code to check the CRC-CCIT (Xmodem)  crc used by Elite 3.0 TPM
 // 08/12/2014 - Some debugging and sample analysis code added by github user magellannh
 //
 // Bug Fix -	Changed frame bytearray to unsigned char and added cast on  byte used in pow() function
@@ -92,19 +93,22 @@ rtl_fm -f 433550000 -s 200000 -r 96000 -g 19.7 2>/dev/null | ./EfergyRPI_001
 #include <string.h>
 
 // Standard definitions for  Efergy E2 classic decoding
-#define MINLOWBIT 		3 	/* Min number of positive samples for a logic 0 */
-#define MINHIGHBIT 		8	/* Min number of positive samples for a logic 1 */
-#define VOLTAGE			240	/* Refernce Volatage */
+//#define MINLOWBIT 		3 	/* Min number of positive samples for a logic 0 */
+//#define MINHIGHBIT 		8	/* Min number of positive samples for a logic 1 */
+//#define VOLTAGE			240	/* Refernce Voltage */
+//#define FRAMEBYTECOUNT		8	/* Efergy RF Message Byte Count */
+//#define CHECKSUM_CRC_BYTES	1	/* Set to 1 to check for one byte checksum or 2 for CRC16 */
 
 // Alternate  definitions for the Efergy Elite 3.0 TPM (if used, comment out duplicates above)
-//#define MINLOWBIT 		3 	/* Min number of positive samples for a logic 0 */
-//#define MINHIGHBIT 		9	/* Min number of positive samples for a logic 1 */
-//#define VOLTAGE			1	/* For Efergy Elite 3.0 TPM,  set to 1 */
+#define MINLOWBIT 		3 	/* Min number of positive samples for a logic 0 */
+#define MINHIGHBIT 		9	/* Min number of positive samples for a logic 1 */
+#define VOLTAGE			1	/* For Efergy Elite 3.0 TPM,  set to 1 */
+#define FRAMEBYTECOUNT		9	/* Efergy RF Message Byte Count */
+#define CHECKSUM_CRC_BYTES	2	/* Efergy Elite 3.0 TPM uses 2 byte crc16 instead of checksum */
 
-#define E2BYTECOUNT		8	/* Efergy RF Message Byte Count */
 #define PREAMBLE_COUNT		40	/* Number of positive samples for a valid preamble */
 #define CENTERSAMP		100	/* Number of samples needed to compute for the wave center */
-#define FRAMEBITCOUNT	(E2BYTECOUNT*8)	/* Number of bits for the entire frame (not including preamble) */
+#define FRAMEBITCOUNT (FRAMEBYTECOUNT*8) /* Number of bits for the entire frame (not including preamble) */
 
 #define LOGTYPE			1	// Allows changing line-endings - 0 is for Unix /n, 1 for Windows /r/n
 #define SAMPLES_TO_FLUSH	10	// Number of samples taken before writing to file.
@@ -183,22 +187,44 @@ int decode_bytes_from_pulse_counts(int pulse_store[], int pulse_store_index, uns
 void display_frame_data(char *msg, unsigned char bytes[], int bytecount) {
 	int i;
 	
-	// Assume message size is unknown and calculate checksums up to bytes7, 8,  and 9 to see if anything looks like a match
+	// Calculate simple 1 byte checksum on message bytes
 	unsigned char tbyte=0x00;
-	for(i=0;i<(bytecount-1);i++)
-		tbyte += bytes[i];
+	for(i=0;i<(bytecount-1);i++) {
+	  tbyte += bytes[i];
+	}
 	
-	// Take a shot at calculating current...
+	// Calculate  CRC-CCIT (Xmodem)  crc using 0x1021 polynomial
+	uint16_t crc=0;
+	for (i=0;i<bytecount-2;i++) {
+		crc = crc ^ ((uint16_t) bytes[i] << 8);
+		int j;
+		for (j=0; j<8; j++) {
+			if (crc & 0x8000)
+				crc = (crc << 1) ^ 0x1021;
+			else
+				crc <<= 1;
+		}
+	}
+	
+	printf( msg);
+	for(i=0;i<bytecount;i++)
+	  printf("%02x ",bytes[i]);
+	
+	if (tbyte == bytes[bytecount-1])
+		printf("chksum ok");
+	else if (crc == ((bytes[bytecount-2]<<8) | bytes[bytecount-1]))
+		printf("crc ok");
+	else
+		printf(" cksum: %02x crc16: %04x ",tbyte, crc);
+
+	// Take a shot at calculating current even if checksum/crc is bad
 	double current_adc = (bytes[4] * 256) + bytes[5];
 	double result  = (VOLTAGE*current_adc) / ((double) (32768) / (double) pow(2,(signed char) bytes[6]));
-	printf( msg);
-	for(i=0;i<bytecount;i++) 
-	  printf("%02x ",bytes[i]);
-	printf("chk: %02x ",tbyte);
+	
 	if (result < 100)
-	  printf(" kW: %4.3f\n", result);
+	  printf("  kW: %4.3f\n", result);
 	else
-	  printf(" kW: <out of range>\n");
+	  printf("  kW: <out of range>\n");
 }
 
 // Verbosity level (from 0 to 3) controls amount of debug output 
@@ -297,10 +323,10 @@ void analyze_efergy_message(int verbosity_level) {
 	int bytecount;
 	if (sample_storage[2] < analysis_wavecenter) {
 		bytecount=decode_bytes_from_pulse_counts(pulse_count_storage, pulse_store_index, bytearray);
-		display_frame_data("Decode from positive pulses: ", bytearray, bytecount);
+		display_frame_data("Msg: ", bytearray, bytecount);
 	} else {
 		bytecount = decode_bytes_from_pulse_counts(space_count_storage, space_store_index, bytearray);
-		display_frame_data("Decode from negative pulses: ", bytearray, bytecount);
+		display_frame_data("Msg (from negative pulses): ", bytearray, bytecount);
 	}
 	
 	if (verbosity_level>0) printf("\n");
@@ -362,27 +388,44 @@ void  run_in_analysis_mode(int verbosity_level) {
 int calculate_watts(unsigned char bytes[])
 {
 
-unsigned char tbyte;
-double current_adc;
-double result;
-int i;
+	unsigned char tbyte;
+	double current_adc;
+	double result;
+	int i;
 
-time_t ltime; 
-struct tm *curtime;
-char buffer[80];
+	time_t ltime; 
+	struct tm *curtime;
+	char buffer[80];
 
-	/* add all captured bytes and mask lower 8 bits */
-
-	tbyte = 0;
-
-	for(i=0;i<7;i++)
-		tbyte += bytes[i];
-
-	tbyte &= 0xff;
-
-	/* if checksum matches get watt data */
-
-	if (tbyte == bytes[7])
+	int checksum_or_crc_valid=0;
+	if (CHECKSUM_CRC_BYTES == 1) {
+		/* add all captured bytes and mask lower 8 bits */
+		tbyte = 0;
+		for(i=0;i<FRAMEBYTECOUNT-1;i++)
+			tbyte += bytes[i];
+		tbyte &= 0xff;
+		if (tbyte == bytes[FRAMEBYTECOUNT-1])
+			checksum_or_crc_valid=1;
+	} else if (CHECKSUM_CRC_BYTES == 2) {
+		// Calculate  CRC-CCIT (Xmodem)  crc using 0x1021 polynomial
+		uint16_t crc=0;
+		for (i=0;i<FRAMEBYTECOUNT-2;i++) {
+			crc = crc ^ ((uint16_t) bytes[i] << 8);
+			int j;
+			for (j=0; j<8; j++) {
+				if (crc & 0x8000)
+					crc = (crc << 1) ^ 0x1021;
+				else
+					crc <<= 1;
+			}
+		}
+		if (crc == ((bytes[FRAMEBYTECOUNT-2]<<8) | bytes[FRAMEBYTECOUNT-1]))
+			checksum_or_crc_valid=1;
+	} else
+		fprintf(stderr, "Specified CHECKSUM_CRC_BYTES value not supported \n");
+	
+	/* if checksum or crc matches get watt data */
+	if (checksum_or_crc_valid)
 	{
 		time( &ltime );
 		curtime = localtime( &ltime );
@@ -406,14 +449,14 @@ char buffer[80];
 		fflush(stdout);
 		return 1;
 	}
-	printf("Checksum Error.  Try running program using -a [1-3] to analyze sample data\n");
+	printf("Checksum/crc error.  Run program with -a [0-3] to analyze sample data\n");
 	return 0;
 }
 
 void  main (int argc, char**argv) 
 {
 
-char bytearray[E2BYTECOUNT+1];
+char bytearray[FRAMEBYTECOUNT+1];
 char bytedata;
 
 int prvsamp;
@@ -530,7 +573,7 @@ long center;
 
 								bytecount++;
 
-								if (bytecount == E2BYTECOUNT)
+								if (bytecount == FRAMEBYTECOUNT)
 								{
 
 									/* at this point check for checksum and calculate watt data */
