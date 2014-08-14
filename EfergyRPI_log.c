@@ -93,18 +93,18 @@ rtl_fm -f 433550000 -s 200000 -r 96000 -g 19.7 2>/dev/null | ./EfergyRPI_001
 #include <string.h>
 
 // Standard definitions for  Efergy E2 classic decoding
-//#define MINLOWBIT 		3 	/* Min number of positive samples for a logic 0 */
-//#define MINHIGHBIT 		8	/* Min number of positive samples for a logic 1 */
-//#define VOLTAGE			240	/* Refernce Voltage */
-//#define FRAMEBYTECOUNT		8	/* Efergy RF Message Byte Count */
-//#define CHECKSUM_CRC_BYTES	1	/* Set to 1 to check for one byte checksum or 2 for CRC16 */
-
-// Alternate  definitions for the Efergy Elite 3.0 TPM (if used, comment out duplicates above)
 #define MINLOWBIT 		3 	/* Min number of positive samples for a logic 0 */
-#define MINHIGHBIT 		9	/* Min number of positive samples for a logic 1 */
-#define VOLTAGE			1	/* For Efergy Elite 3.0 TPM,  set to 1 */
-#define FRAMEBYTECOUNT		9	/* Efergy RF Message Byte Count */
-#define CHECKSUM_CRC_BYTES	2	/* Efergy Elite 3.0 TPM uses 2 byte crc16 instead of checksum */
+#define MINHIGHBIT 		8	/* Min number of positive samples for a logic 1 */
+#define VOLTAGE			240	/* Refernce Voltage */
+#define FRAMEBYTECOUNT		8	/* Efergy RF Message Byte Count */
+#define CHECKSUM_CRC_BYTES	1	/* Set to 1 to check for one byte checksum or 2 for CRC16 */
+
+// Alternate  definitions for the Efergy Elite 3.0 TPM and possibly other devices  (if used, comment out duplicates above)
+//#define MINLOWBIT 		3 	/* Min number of positive samples for a logic 0 */
+//#define MINHIGHBIT 		9	/* Min number of positive samples for a logic 1 */
+//#define VOLTAGE			1	/* For Efergy Elite 3.0 TPM,  set to 1 */
+//#define FRAMEBYTECOUNT		9	/* Efergy RF Message Byte Count */
+//#define CHECKSUM_CRC_BYTES	2	/* Efergy Elite 3.0 TPM uses 2 byte crc16 instead of checksum */
 
 #define PREAMBLE_COUNT		40	/* Number of positive samples for a valid preamble */
 #define CENTERSAMP		100	/* Number of samples needed to compute for the wave center */
