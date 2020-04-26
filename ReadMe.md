@@ -1,0 +1,2 @@
+- best frequency is 433.542e6
+- where did i get rtl_fm from??
