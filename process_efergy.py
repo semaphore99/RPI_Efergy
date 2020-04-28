@@ -9,8 +9,16 @@ client = pymongo.MongoClient("mongodb+srv://" + credentials.strip() + "@cluster0
 efergyDB = client.Efergy
 testCollection = efergyDB.test
 
+# See if there's already a document for today. This is in case the script restarts for whatever reason
+searchId = datetime.now().strftime("%Y%m%d")
+existingDoc = testCollection.find_one({'_id':searchId})
+
+if not (existingDoc is None):
+    readings = existingDoc['readings']
+else:
+    readings = []
+
 thisHour = 0
-readings = []
 for line in sys.stdin:
     # example line: 04/26/20,21:57:48,2603.437500
     now = datetime.now()
