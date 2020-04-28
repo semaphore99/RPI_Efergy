@@ -37,7 +37,12 @@ for line in sys.stdin:
             'readings': readings
         }
         key = {'_id': docId}
-        testCollection.replace_one(key, document, upsert=True)
+        searchId = datetime.now().strftime("%Y%m%d")
+        existingDoc = testCollection.find_one({'_id':searchId}, {'_id': 1})
+        if (existingDoc is None):
+            testCollection.replace_one(key, document, upsert=True)
+        else:
+            testCollection.update_one(key, {'$push': {'readings': reading}})
     except ValueError:
         print(tokens[-1] + " is not a number")
 
