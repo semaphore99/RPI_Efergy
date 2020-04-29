@@ -19,6 +19,7 @@ else:
     readings = []
 
 thisHour = 0
+lastTimestamp = ""
 for line in sys.stdin:
     # example line: 04/26/20,21:57:48,2603.437500
     now = datetime.now()
@@ -31,10 +32,10 @@ for line in sys.stdin:
         timestamp = now.strftime("%Y%m%d-%H%M-%S")
         #really only interested in the last number
         reading = {'timestamp':timestamp, 'reading':tokens[-1]}
-        readings.append(reading)
+        readings.append(reading) #readings is a leftover when i was uploading all readings for a day repeatedly.
         document = {
             '_id': docId,
-            'readings': readings
+            'readings': [reading]
         }
         key = {'_id': docId}
         searchId = datetime.now().strftime("%Y%m%d")
