@@ -53,12 +53,12 @@ for line in sys.stdin:
             testCollection.update_one(key, {'$push': {'readings': reading}})
         
         #the current reading
-        key = {'id': "Now"}
+        key = {'_id': "Now"}
         document = {
             '_id': "Now",
             'reading': reading
         }
-        testCollection.save(document)
+        testCollection.replace_one(key, document, upsert=True)
     except ValueError:
         print(tokens[-1] + " is not a number")
 
