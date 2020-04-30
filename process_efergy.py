@@ -58,7 +58,7 @@ for line in sys.stdin:
             '_id': "Now",
             'reading': reading
         }
-        testCollection.update_one(key, document, upsert=True)
+        testCollection.save(document)
     except ValueError:
         print(tokens[-1] + " is not a number")
 
