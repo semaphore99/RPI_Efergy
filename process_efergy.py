@@ -14,6 +14,7 @@ client = pymongo.MongoClient("mongodb+srv://" + credentials.strip() + "@cluster0
 #client = pymongo.MongoClient("mongodb+srv://" + credentials.strip() + "@cluster0-scaef.mongodb.net/test?retryWrites=true&w=majority")
 efergyDB = client.Efergy
 testCollection = efergyDB.RawSamples
+currentReadingCollection = efergyDB.CurrentReadings
 
 # See if there's already a document for today. This is in case the script restarts for whatever reason
 searchId = datetime.now().strftime("%Y%m%d")
@@ -38,11 +39,11 @@ for line in sys.stdin:
     
         timestamp = now.strftime("%Y%m%d-%H%M-%S")
         #really only interested in the last number
-        reading = {'timestamp':timestamp, 'reading':tokens[-1].strip()}
+        reading = {'Timestamp':timestamp, 'Reading':tokens[-1].strip()}
         readings.append(reading) #readings is a leftover when i was uploading all readings for a day repeatedly.
         document = {
             '_id': docId,
-            'readings': [reading]
+            'Readings': [reading]
         }
         key = {'_id': docId}
         searchId = datetime.now().strftime("%Y%m%d")
@@ -50,15 +51,16 @@ for line in sys.stdin:
         if (existingDoc is None):
             testCollection.replace_one(key, document, upsert=True)
         else:
-            testCollection.update_one(key, {'$push': {'readings': reading}})
+            testCollection.update_one(key, {'$push': {'Readings': reading}})
         
         #the current reading
         key = {'_id': "Now"}
         document = {
             '_id': "Now",
-            'reading': reading
+            'Timestamp': timestamp,
+            'Reading': reading
         }
-        testCollection.replace_one(key, document, upsert=True)
+        currentReadingCollection.replace_one(key, document, upsert=True)
     except ValueError:
         print(tokens[-1] + " is not a number")
 
