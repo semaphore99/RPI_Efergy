@@ -21,7 +21,7 @@ searchId = datetime.now().strftime("%Y%m%d")
 existingDoc = testCollection.find_one({'_id':searchId})
 
 if not (existingDoc is None):
-    readings = existingDoc['readings']
+    readings = existingDoc['Readings']
 else:
     readings = []
 
