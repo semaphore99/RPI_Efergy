@@ -35,11 +35,11 @@ for line in sys.stdin:
     tokens = line.strip().split(",")
     docId = now.strftime("%Y%m%d")
     try:
-        wattage = float(tokens[-1])
+        wattage = float(tokens[-1].strip())
     
         timestamp = now.strftime("%Y%m%d-%H%M-%S")
         #really only interested in the last number
-        reading = {'Timestamp':timestamp, 'Reading':tokens[-1].strip()}
+        reading = {'Timestamp':timestamp, 'Reading':wattage}
         readings.append(reading) #readings is a leftover when i was uploading all readings for a day repeatedly.
         document = {
             '_id': docId,
@@ -58,7 +58,7 @@ for line in sys.stdin:
         document = {
             '_id': "Now",
             'Timestamp': timestamp,
-            'Reading': reading
+            'Reading': wattage
         }
         currentReadingCollection.replace_one(key, document, upsert=True)
     except ValueError:
