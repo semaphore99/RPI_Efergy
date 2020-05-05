@@ -1,6 +1,7 @@
 import sys
 import pymongo
 from datetime import datetime
+import time
 
 def GetLastHourReadings():
 
@@ -61,6 +62,24 @@ for line in sys.stdin:
             'Reading': wattage
         }
         currentReadingCollection.replace_one(key, document, upsert=True)
+
+        #last hour's readings
+        index = 0
+        while (index < len(readings)):
+            ts = time.mktime(time.strptime(readings[index]['Timestamp'], '%Y%m%d-%H%M-%S'))
+            readingTime = datetime.fromtimestamp(ts)
+            if (now - readingTime).total_seconds() < 3600:
+                lastHourReadings = readings[index:]
+                document = {
+                    '_id': "LastHour",
+                    'Timestamp': timestamp,
+                    'Readings': lastHourReadings
+                }
+                key = {'_id': "LastHour"}
+                testCollection.replace_one(key, document, upsert=True)
+                break
+            index += 1
+
     except ValueError:
         print(tokens[-1] + " is not a number")
 
