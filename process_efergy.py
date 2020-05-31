@@ -15,6 +15,7 @@ client = pymongo.MongoClient("mongodb+srv://" + credentials.strip() + "@cluster0
 #client = pymongo.MongoClient("mongodb+srv://" + credentials.strip() + "@cluster0-scaef.mongodb.net/test?retryWrites=true&w=majority")
 efergyDB = client.Efergy
 testCollection = efergyDB.RawSamples
+monthlyCollection = efergyDB.MonthlyReadings
 currentReadingCollection = efergyDB.CurrentReadings
 
 # See if there's already a document for today. This is in case the script restarts for whatever reason
@@ -28,7 +29,7 @@ else:
 
 
 thisHour = 0
-lastTimestamp = ""
+lastUpdate = None
 for line in sys.stdin:
     # example line: 04/26/20,21:57:48,2603.437500
     now = datetime.now()
@@ -52,7 +53,10 @@ for line in sys.stdin:
         if (existingDoc is None):
             testCollection.replace_one(key, document, upsert=True)
         else:
-            testCollection.update_one(key, {'$push': {'Readings': reading}})
+            #to avoid having too many entries in the daily records, only add a reading
+            # every minute.
+            if lastUpdate != None and (now - lastUpdate).total_seconds() > 60:
+                testCollection.update_one(key, {'$push': {'Readings': reading}})
         
         #the current reading
         key = {'_id': "Now"}
@@ -63,7 +67,7 @@ for line in sys.stdin:
         }
         currentReadingCollection.replace_one(key, document, upsert=True)
 
-        #last hour's readings
+        #last hour's readings - 
         index = 0
         while (index < len(readings)):
             ts = time.mktime(time.strptime(readings[index]['Timestamp'], '%Y%m%d-%H%M-%S'))
@@ -76,11 +80,40 @@ for line in sys.stdin:
                     'Readings': lastHourReadings
                 }
                 key = {'_id': "LastHour"}
-                testCollection.replace_one(key, document, upsert=True)
+                currentReadingCollection.replace_one(key, document, upsert=True)
                 break
             index += 1
+
+        #update monthly numbers
+        if (lastUpdate != None and lastUpdate.day != now.day):
+            docId = lastUpdate.strftime("%Y%m")
+
+            # find average energy usage for the day. 
+            # I'm sure there's a better way in python to do this
+            total = 0
+            for thing in readings:
+                total = total + thing['Reading']
+            wattage = total / len(readings) * 24 # convert to total
+            reading = {'Timestamp':lastUpdate.strftime("%Y%m%d"), 'TotalWattage':wattage}
+            key = {'_id': docId}
+            existingDoc = monthlyCollection.find_one({'_id':docId}, {'_id': 1})
+            if (existingDoc is None):
+                document = {
+                    '_id': docId,
+                    'Readings': [reading]
+                }
+                testCollection.replace_one(key, document, upsert=True)
+            else:
+                monthlyCollection.update_one(key, {'$push': {'Readings': reading}})
+
+            #a different day, so clear yesterday's readings
+            readings = readings[-1:]
+
+        
 
     except ValueError:
         print(tokens[-1] + " is not a number")
 
+    
+    lastUpdate = now
 
