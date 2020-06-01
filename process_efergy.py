@@ -43,6 +43,7 @@ for line in sys.stdin:
         #really only interested in the last number
         reading = {'Timestamp':timestamp, 'Reading':wattage}
         readings.append(reading) #readings is a leftover when i was uploading all readings for a day repeatedly.
+        print(str(len(readings)) + " entries in readings array")
         document = {
             '_id': docId,
             'Readings': [reading]
