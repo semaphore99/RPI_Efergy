@@ -14,13 +14,14 @@ credentials = secret.read()
 client = pymongo.MongoClient("mongodb+srv://" + credentials.strip() + "@cluster0-i2cea.mongodb.net/test?retryWrites=true&w=majority")
 #client = pymongo.MongoClient("mongodb+srv://" + credentials.strip() + "@cluster0-scaef.mongodb.net/test?retryWrites=true&w=majority")
 efergyDB = client.Efergy
-testCollection = efergyDB.RawSamples
+hourlyCollection = efergyDB.HourlyReadings
+dailyCollection = efergyDB.DailyReadings
 monthlyCollection = efergyDB.MonthlyReadings
 currentReadingCollection = efergyDB.CurrentReadings
 
 # See if there's already a document for today. This is in case the script restarts for whatever reason
 searchId = datetime.now().strftime("%Y%m%d")
-existingDoc = testCollection.find_one({'_id':searchId})
+existingDoc = dailyCollection.find_one({'_id':searchId})
 
 if not (existingDoc is None):
     readings = existingDoc['Readings']
@@ -50,14 +51,14 @@ for line in sys.stdin:
         }
         key = {'_id': docId}
         searchId = datetime.now().strftime("%Y%m%d")
-        existingDoc = testCollection.find_one({'_id':searchId}, {'_id': 1})
+        existingDoc = dailyCollection.find_one({'_id':searchId}, {'_id': 1})
         if (existingDoc is None):
-            testCollection.replace_one(key, document, upsert=True)
+            dailyCollection.replace_one(key, document, upsert=True)
         else:
             #to avoid having too many entries in the daily records, only add a reading
             # every minute.
             if lastUpdate != None and (now - lastUpdate).total_seconds() > 60:
-                testCollection.update_one(key, {'$push': {'Readings': reading}})
+                dialyCollection.update_one(key, {'$push': {'Readings': reading}})
         
         #the current reading
         key = {'_id': "Now"}
@@ -81,11 +82,17 @@ for line in sys.stdin:
                     'Readings': lastHourReadings
                 }
                 key = {'_id': "LastHour"}
-                currentReadingCollection.replace_one(key, document, upsert=True)
+                hourlyCollection.replace_one(key, document, upsert=True)
                 break
             index += 1
+        
 
         #update monthly numbers
+        total = 0
+        for thing in readings:
+            total = total + thing['Reading']
+        print(str(len(readings)) + " readings for a total of " + str(total) + " Wh")
+        print("Averge wattage so far today: " + str(total / len(readings)) + " Wh")
         if (lastUpdate != None):
             print("lastUpdate.day = " + str(lastUpdate.day) + ", now.day = " + str(now.day))
             if lastUpdate.day != now.day:
@@ -93,9 +100,7 @@ for line in sys.stdin:
 
                 # find average energy usage for the day. 
                 # I'm sure there's a better way in python to do this
-                total = 0
-                for thing in readings:
-                    total = total + thing['Reading']
+                
                 wattage = total / len(readings) * 24 # convert to total
                 reading = {'Timestamp':lastUpdate.strftime("%Y%m%d"), 'TotalWattage':wattage}
                 print(reading)
