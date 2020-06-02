@@ -106,7 +106,7 @@ for line in sys.stdin:
                         '_id': docId,
                         'Readings': [reading]
                     }
-                    testCollection.replace_one(key, document, upsert=True)
+                    monthlyCollection.replace_one(key, document, upsert=True)
                 else:
                     monthlyCollection.update_one(key, {'$push': {'Readings': reading}})
 
