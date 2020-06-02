@@ -93,6 +93,7 @@ for line in sys.stdin:
             total = total + thing['Reading']
         print(str(len(readings)) + " readings for a total of " + str(total) + " Wh")
         print("Averge wattage so far today: " + str(total / len(readings)) + " Wh")
+        print("Forecast total usage today: " + str(total * 24 / len(readings) /  1000) + "kWh")
         if (lastUpdate != None):
             print("lastUpdate.day = " + str(lastUpdate.day) + ", now.day = " + str(now.day))
             if lastUpdate.day != now.day:
