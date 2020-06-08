@@ -58,7 +58,7 @@ for line in sys.stdin:
             #to avoid having too many entries in the daily records, only add a reading
             # every minute.
             if lastUpdate != None and (now - lastUpdate).total_seconds() > 60:
-                dialyCollection.update_one(key, {'$push': {'Readings': reading}})
+                dailyCollection.update_one(key, {'$push': {'Readings': reading}})
         
         #the current reading
         key = {'_id': "Now"}
