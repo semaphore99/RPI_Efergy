@@ -53,11 +53,13 @@ for line in sys.stdin:
         searchId = datetime.now().strftime("%Y%m%d")
         existingDoc = dailyCollection.find_one({'_id':searchId}, {'_id': 1})
         if (existingDoc is None):
+            print("Adding new daily record")
             dailyCollection.replace_one(key, document, upsert=True)
         else:
             #to avoid having too many entries in the daily records, only add a reading
             # every minute.
             if lastUpdate != None and (now - lastUpdate).total_seconds() > 60:
+                print("Adding new entry to daily readings")
                 dailyCollection.update_one(key, {'$push': {'Readings': reading}})
         
         #the current reading
