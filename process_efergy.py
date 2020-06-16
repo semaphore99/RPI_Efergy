@@ -61,6 +61,8 @@ for line in sys.stdin:
             if lastUpdate != None and (now - lastUpdate).total_seconds() > 60:
                 print("Adding new entry to daily readings")
                 dailyCollection.update_one(key, {'$push': {'Readings': reading}})
+                lastUpdate = now
+
         
         #the current reading
         key = {'_id': "Now"}
@@ -126,6 +128,4 @@ for line in sys.stdin:
     except ValueError:
         print(tokens[-1] + " is not a number")
 
-    
-    lastUpdate = now
 
