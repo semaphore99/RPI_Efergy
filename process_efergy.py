@@ -30,7 +30,7 @@ else:
 
 
 thisHour = 0
-lastUpdate = None
+lastUpdate = datetime.now()
 for line in sys.stdin:
     # example line: 04/26/20,21:57:48,2603.437500
     now = datetime.now()
@@ -55,9 +55,11 @@ for line in sys.stdin:
         if (existingDoc is None):
             print("Adding new daily record")
             dailyCollection.replace_one(key, document, upsert=True)
+            lastUpdate = now
         else:
             #to avoid having too many entries in the daily records, only add a reading
             # every minute.
+            print("seconds elapsed since last update: " + str((now - lastUpdate).total_seconds()))
             if lastUpdate != None and (now - lastUpdate).total_seconds() > 60:
                 print("Adding new entry to daily readings")
                 dailyCollection.update_one(key, {'$push': {'Readings': reading}})
