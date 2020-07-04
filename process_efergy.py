@@ -39,7 +39,7 @@ for line in sys.stdin:
     docId = now.strftime("%Y%m%d")
     try:
         wattage = float(tokens[-1].strip())
-    
+
         timestamp = now.strftime("%Y%m%d-%H%M-%S")
         #really only interested in the last number
         reading = {'Timestamp':timestamp, 'Reading':wattage}
@@ -97,6 +97,7 @@ for line in sys.stdin:
             total = total + thing['Reading']
         print(str(len(readings)) + " readings for a total of " + str(total) + " Wh")
         print("Averge wattage so far today: " + str(total / len(readings)) + " Wh")
+        print("Total wattage so far today: " + str((now.hour + now.minute / 60) * total / len(readings)))
         print("Forecast total usage today: " + str(total * 24 / len(readings) /  1000) + "kWh")
         if (lastUpdate != None):
             print("lastUpdate.day = " + str(lastUpdate.day) + ", now.day = " + str(now.day))
