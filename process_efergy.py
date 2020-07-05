@@ -99,30 +99,26 @@ for line in sys.stdin:
             total = total + thing['Reading']
         print(str(len(readings)) + " readings for a total of " + str(total) + " Wh")
         print("Averge wattage so far today: " + str(total / len(readings)) + " Wh")
-        print("Total wattage so far today: " + str((now.hour + now.minute / 60) * total / len(readings)))
-        print("Forecast total usage today: " + str(total * 24 / len(readings) /  1000) + "kWh")
+        wattageSoFar = (now.hour + now.minute / 60) * total / len(readings) / 1000
+        wattageForDay = total * 24 / len(readings) /  1000
+        print("Total wattage so far today: " + str(wattageSoFar) + "kWh")
+        print("Forecast total usage today: " + str(wattageForDay) + "kWh")
         if (lastUpdate != None):
             print("lastUpdate.day = " + str(lastUpdate.day) + ", now.day = " + str(now.day))
+            docId = lastUpdate.strftime("%Y%m%d")
+
+            # find average energy usage for the day. 
+            # I'm sure there's a better way in python to do this
+            
+            wattage = total / len(readings) * 24
+            key = {'_id': docId}
+            document = {
+                '_id': docId,
+                'Reading': wattageSoFar
+            }
+            monthlyCollection.replace_one(key, document, upsert=True)
+
             if lastUpdate.day != now.day:
-                docId = lastUpdate.strftime("%Y%m")
-
-                # find average energy usage for the day. 
-                # I'm sure there's a better way in python to do this
-                
-                wattage = total / len(readings) * 24 # convert to total
-                reading = {'Timestamp':lastUpdate.strftime("%Y%m%d"), 'TotalWattage':wattage}
-                print(reading)
-                key = {'_id': docId}
-                existingDoc = monthlyCollection.find_one({'_id':docId}, {'_id': 1})
-                if (existingDoc is None):
-                    document = {
-                        '_id': docId,
-                        'Readings': [reading]
-                    }
-                    monthlyCollection.replace_one(key, document, upsert=True)
-                else:
-                    monthlyCollection.update_one(key, {'$push': {'Readings': reading}})
-
                 #a different day, so clear yesterday's readings
                 readings = readings[-1:]
 
