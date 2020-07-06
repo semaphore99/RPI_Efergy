@@ -105,7 +105,7 @@ for line in sys.stdin:
         print("Forecast total usage today: " + str(wattageForDay) + "kWh")
         if (lastUpdate != None):
             print("lastUpdate.day = " + str(lastUpdate.day) + ", now.day = " + str(now.day))
-            docId = lastUpdate.strftime("%Y%m%d")
+            docId = now.strftime("%Y%m%d")
 
             # find average energy usage for the day. 
             # I'm sure there's a better way in python to do this
